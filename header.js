@@ -17,7 +17,7 @@ export default class Header extends Component {
     const styles = StyleSheet.create({
     header: {
         height: 80,
-        backgroundColor: 'lightseagreen',
+        backgroundColor: '#0055aa',
         alignItems: 'center',
         justifyContent: 'flex-end',
         padding: 10,
