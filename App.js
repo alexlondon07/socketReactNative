@@ -1,4 +1,4 @@
-import React, {Component} from 'react'
+import React, { Component } from 'react'
 import {
   StyleSheet,
   Text,
@@ -6,29 +6,50 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
-  Modal,
+  StatusBar,
   FlatList,
-  Image,
-  Button,
-  Alert
+  Image, Modal, Button
 } from 'react-native';
-import Header from './header';
+
 import io from 'socket.io-client';
+import Header from './header';
 
 const NAME = '@alexlondon07';
-const CHANNEL = 'Chat Etn';
-const AVATAR = "https://pbs.twimg.com/profile_images/1036339037232144384/coUeIfX7_bigger.jpg";
+const CHANNEL = 'Etn'
+const AVATAR = "https://avatars0.githubusercontent.com/u/5550470?s=460&v=4";
 
 export default class App extends Component {
   state = {
     typing: '',
     messages: [],
     showModal: true,
-    nickname: ''
+    nickname: '',
+    whoIsTyping: ''
   };
 
-  componentWillMount() {
-    this.socket = io.connect('http://chatroomrn.us.openode.io:80')
+  componentDidMount(){
+    this.socket = io.connect('http://chatroomrn.us.openode.io:80');
+    this.listenMessages();
+    this.listenTyping();
+  }
+
+  listenMessages(){
+    this.socket.on('new_message', ( data ) => {
+      let newMessage = {
+        avatar: data.avatar,
+        username: data.username,
+        message: data.message
+      };
+      this.setState({
+        messages: [...this.state.messages, newMessage ]
+      })
+    })
+  }
+
+  listenTyping(){
+    this.socket.on('typing', (data) => {
+      this.setState({ whoIsTyping: data.username });
+    });
   }
 
   renderItem({ item }) {
@@ -36,77 +57,71 @@ export default class App extends Component {
       <View style={styles.row}>
         <Image style={styles.avatar} source={{ uri: item.avatar }} />
         <View style={styles.rowText}>
-          <Text style={styles.sender}>{ item.username }</Text>
-          <Text style={styles.message}>{ item.message }</Text>
+          <Text style={styles.sender}>{item.username}</Text>
+          <Text style={styles.message}>{item.message}</Text>
         </View>
       </View>
     );
   }
 
   sendMessage = () => {
-   /* this.setState({
-      messages: [...this.state.messages, { nickname: NAME, avatar: AVATAR, message: this.state.typing }]
-    })*/
     this.socket.emit('new_message', { message: this.state.typing })
     this.setState({
       typing: ''
     })
   }
 
-  componentDidMount = () => {
-    this.listenMessages();
-  }
-  listenMessages(){
-    this.socket.on('new_message', ( data ) => {
-      let newMessage = {
-        avatar: data.avatar,
-        username: data.username,
-        message: data.message
-      }
-      this.setState({
-        messages: [...this.state.messages, newMessage ]
-      })
-    });
-  }
-
-  keyExtractor = () => Math.floor((Math.random() * 1000) + 1).toString();
+  keyExtractor = () => Math.floor((Math.random() * 1000) + 1).toString()
 
   enterRoom = () => {
-    this.socket.emit('change_username', { username: this.state.nickname, avatar: AVATAR } )
+    this.socket.emit('change_username', { username: this.state.nickname, avatar: AVATAR })
     this.setState({ showModal: false })
   }
-  renderModal (){
+
+  onChangeTextInput = (text) => {
+    this.setState({'typing': text});
+    this.socket.emit('typing', { username: this.state.nickname })
+  }
+
+  renderModal(){
     return (
       <Modal
         animationType="slide"
-        transparent={false}
         visible={ this.state.showModal }
-        onRequestClose={ () => { Alert.alert('Modal has been closed.') } }>
+        transparent={false}
+        onRequestClose={ () => {  } }
+      >
         <View style={ styles.modalContainer }>
-            <TextInput
-              style={styles.inputNickname}
-              placeholder="@nickname"
-              onChangeText={text => this.setState({ nickname: text })}
-            />
-            <Button
-              title="Ingresar al chat :D"
-              onPress={ this.enterRoom }
-            />
+          <TextInput
+            style={ styles.inputNickname }
+            placeholder={ '@nickname' }
+            onChangeText={text => this.setState({ nickname: text })}
+          />
+          <Button
+            title="Ingresar al chat :D"
+            onPress={ this.enterRoom }
+          />
         </View>
       </Modal>
-    )
+    );
   }
 
   render() {
     return (
       <View style={styles.container}>
-      { this.renderModal() }
-      <Header title={CHANNEL} />
+        { this.renderModal() }
+        <Header title={ CHANNEL } />
+        {
+          this.state.whoIsTyping != '' ? 
+          <Text>  
+            { this.state.whoIsTyping } is typing ...
+          </Text> 
+          : null
+        }
         <FlatList
           data={this.state.messages}
           renderItem={this.renderItem}
-          //inverted
-          keyExtractor={this.keyExtractor}
+          keyExtractor={ this.keyExtractor }
         />
         <KeyboardAvoidingView behavior="padding">
           <View style={styles.footer}>
@@ -115,10 +130,10 @@ export default class App extends Component {
               style={styles.input}
               underlineColorAndroid="transparent"
               placeholder="Type something nice"
-              onChangeText={text => this.setState({ typing: text })}
-              onSubmitEditing = { this.sendMessage }
+              onChangeText={ this.onChangeTextInput }
+              onSubmitEditing={ this.sendMessage }
             />
-            <TouchableOpacity onPress={ this.sendMessage }>
+            <TouchableOpacity onPress={this.sendMessage}>
               <Text style={styles.send}>Enviar</Text>
             </TouchableOpacity>
           </View>
@@ -129,9 +144,6 @@ export default class App extends Component {
 }
 
 const styles = StyleSheet.create({
-  inputNickname: {
-
-  },
   container: {
     flex: 1,
     backgroundColor: '#fff'
@@ -160,28 +172,27 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
-    backgroundColor: '#eee',
+    backgroundColor: '#eee'
   },
   input: {
     paddingHorizontal: 20,
     fontSize: 18,
-    flex: 1,
-    color: '#0055aa',
+    flex: 1
   },
   send: {
     alignSelf: 'center',
-    color: '#0055aa',
+    color: 'lightseagreen',
     fontSize: 16,
     fontWeight: 'bold',
     padding: 20
   },
-  modalContainer:{
+  modalContainer: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 10
   },
-  inputNickname:{
+  inputNickname: {
     backgroundColor: '#ccc',
-    marginHorizontal: 10,
+    marginBottom: 10,
   }
 });
